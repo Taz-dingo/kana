@@ -13,6 +13,7 @@
 
   html {
     @apply bg-[#f7f3ea];
+    scrollbar-gutter: stable;
   }
 
   body {

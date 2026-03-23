@@ -30,8 +30,21 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
     }
 
     lastFocusedElementRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const scrollY = window.scrollY;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
     const previousOverflow = document.body.style.overflow;
+    const previousPosition = document.body.style.position;
+    const previousTop = document.body.style.top;
+    const previousWidth = document.body.style.width;
+    const previousLeft = document.body.style.left;
+    const previousRight = document.body.style.right;
+    document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
 
     const focusTimer = window.setTimeout(() => {
       closeButtonRef.current?.focus();
@@ -75,7 +88,14 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
     return () => {
       window.clearTimeout(focusTimer);
       window.removeEventListener("keydown", handleKeyDown);
+      document.documentElement.style.overflow = previousHtmlOverflow;
       document.body.style.overflow = previousOverflow;
+      document.body.style.position = previousPosition;
+      document.body.style.top = previousTop;
+      document.body.style.left = previousLeft;
+      document.body.style.right = previousRight;
+      document.body.style.width = previousWidth;
+      window.scrollTo({ top: scrollY, behavior: "auto" });
       window.speechSynthesis?.cancel();
       audioRef.current?.pause();
       audioRef.current = null;
@@ -154,7 +174,7 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
       : "当前浏览器不支持语音播放，可在后续接入本地音频资源。";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/30 px-4 py-6 backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/35 px-4 py-6" onClick={onClose}>
       <div
         ref={panelRef}
         role="dialog"
