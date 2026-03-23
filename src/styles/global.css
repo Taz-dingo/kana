@@ -18,7 +18,15 @@
 
   body {
     @apply min-h-screen bg-[#f7f3ea] text-stone-800 antialiased;
+    font-family: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC",
+      "Source Han Sans SC", "Microsoft YaHei", "Segoe UI", sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  :lang(ja),
+  [lang="ja-JP"] {
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic",
+      "Noto Sans CJK JP", "Source Han Sans JP", sans-serif;
   }
 
   ::selection {

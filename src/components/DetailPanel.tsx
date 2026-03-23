@@ -13,19 +13,59 @@ type AudioSource = "local" | "tts" | null;
 
 const FOCUSABLE_SELECTOR =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+const EXIT_DURATION_MS = 180;
 
 export default function DetailPanel({ kana, activeType, onClose }: DetailPanelProps) {
   const [audioState, setAudioState] = useState<AudioState>("idle");
   const [audioSource, setAudioSource] = useState<AudioSource>(null);
+  const [displayKana, setDisplayKana] = useState<KanaEntry | null>(kana);
+  const [isVisible, setIsVisible] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
 
-  const primaryChar = useMemo(() => (kana ? getKanaChar(kana, activeType) : ""), [activeType, kana]);
+  const primaryChar = useMemo(
+    () => (displayKana ? getKanaChar(displayKana, activeType) : ""),
+    [activeType, displayKana]
+  );
+  const activeLabel = activeType === "hiragana" ? "平假名" : "片假名";
+  const inactiveLabel = activeType === "hiragana" ? "片假名" : "平假名";
 
   useEffect(() => {
-    if (!kana) {
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+
+    if (kana) {
+      setDisplayKana(kana);
+      window.requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+      return;
+    }
+
+    if (displayKana) {
+      setIsVisible(false);
+      closeTimerRef.current = window.setTimeout(() => {
+        setDisplayKana(null);
+        closeTimerRef.current = null;
+      }, EXIT_DURATION_MS);
+    }
+  }, [kana, displayKana]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!displayKana) {
       return;
     }
 
@@ -38,6 +78,7 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
     const previousWidth = document.body.style.width;
     const previousLeft = document.body.style.left;
     const previousRight = document.body.style.right;
+
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
     document.body.style.position = "fixed";
@@ -48,7 +89,7 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
 
     const focusTimer = window.setTimeout(() => {
       closeButtonRef.current?.focus();
-    }, 0);
+    }, 40);
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -101,23 +142,23 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
       audioRef.current = null;
       lastFocusedElementRef.current?.focus();
     };
-  }, [kana, onClose]);
+  }, [displayKana, onClose]);
 
   useEffect(() => {
     setAudioState("idle");
     setAudioSource(null);
-  }, [kana]);
+  }, [displayKana, activeType]);
 
-  if (!kana) {
+  if (!displayKana) {
     return null;
   }
 
   const handlePlayLocalAudio = () => {
-    if (!kana.audio) {
+    if (!displayKana.audio) {
       return false;
     }
 
-    const audio = new Audio(kana.audio);
+    const audio = new Audio(displayKana.audio);
     audioRef.current?.pause();
     audioRef.current = audio;
     setAudioSource("local");
@@ -162,7 +203,7 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
     handleSpeakWithTTS();
   };
 
-  const audioSummary = kana.audio
+  const audioSummary = displayKana.audio
     ? audioSource === "local"
       ? "正在优先播放本地音频资源。"
       : "当前字符已预留本地音频字段，必要时可回退到浏览器语音。"
@@ -173,51 +214,92 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
       ? "本地音频当前不可用，建议检查资源路径或继续使用浏览器语音兜底。"
       : "当前浏览器不支持语音播放，可在后续接入本地音频资源。";
 
+  const audioStatusLabel =
+    audioState === "playing" ? "播放中" : audioState === "error" ? "播放异常" : "待播放";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/35 px-4 py-6" onClick={onClose}>
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center px-4 py-6 transition duration-200 ease-out ${
+        isVisible ? "bg-stone-900/35 opacity-100" : "bg-stone-900/0 opacity-0"
+      }`}
+      onClick={onClose}
+      aria-hidden={!isVisible}
+    >
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="kana-detail-title"
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-stone-300 bg-[#fbf8f1] shadow-[0_24px_80px_rgba(28,25,23,0.16)]"
+        className={`max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-stone-300 bg-[#fbf8f1] shadow-[0_24px_80px_rgba(28,25,23,0.16)] transition duration-200 ease-out ${
+          isVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-[0.985] opacity-0"
+        }`}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-stone-300 px-5 py-5 sm:px-7 sm:py-6">
-          <div>
-            <p className="text-xs uppercase tracking-[0.32em] text-stone-500">Detail</p>
-            <h2 id="kana-detail-title" className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-stone-900 sm:text-4xl">
-              {kana.romaji}
-            </h2>
-            <p className="mt-2 text-sm text-stone-500">
-              {kana.row} · {activeType === "hiragana" ? "当前查看平假名" : "当前查看片假名"}
-            </p>
+        <div className="border-b border-stone-300 px-5 py-5 sm:px-7 sm:py-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.32em] text-stone-500">Detail</p>
+              <h2 id="kana-detail-title" className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-stone-900 sm:text-4xl">
+                {displayKana.romaji}
+              </h2>
+              <p className="mt-2 text-sm text-stone-500">
+                {displayKana.row} · 当前主视图：{activeLabel}
+              </p>
+            </div>
+            <button
+              ref={closeButtonRef}
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-600 transition hover:border-stone-500 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-400"
+            >
+              关闭
+            </button>
           </div>
-          <button
-            ref={closeButtonRef}
-            type="button"
-            onClick={onClose}
-            className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-600 transition hover:border-stone-500 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-400"
-          >
-            关闭
-          </button>
+
+          <div className="mt-6 grid gap-4 border-t border-stone-200 pt-5 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-end">
+            <div>
+              <div className="inline-flex rounded-full border border-stone-300 bg-white/80 px-3 py-1 text-xs uppercase tracking-[0.28em] text-stone-500">
+                {activeLabel}
+              </div>
+              <div lang="ja-JP" className="mt-4 text-[88px] font-semibold leading-none tracking-[-0.06em] text-stone-900 sm:text-[112px]">
+                {primaryChar}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2 text-xs text-stone-500">
+                <span className="rounded-full border border-stone-300 bg-white px-3 py-1">罗马音：{displayKana.romaji}</span>
+                <span className="rounded-full border border-stone-300 bg-white px-3 py-1">所在列：{displayKana.column.toUpperCase()}</span>
+                <span className="rounded-full border border-stone-300 bg-white px-3 py-1">对照：{inactiveLabel}</span>
+              </div>
+            </div>
+            <div className="border border-stone-300 bg-white p-4">
+              <div className="text-xs uppercase tracking-[0.28em] text-stone-500">学习提示</div>
+              <p className="mt-3 text-sm leading-7 text-stone-600">
+                先记当前主视图字符，再用右侧对照确认另一套写法，最后播放发音把字形和声音绑在一起。
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="grid gap-6 px-5 py-5 sm:px-7 sm:py-6">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className={`border p-4 ${activeType === "hiragana" ? "border-stone-900 bg-stone-100" : "border-stone-300 bg-white"}`}>
-              <div className="text-xs uppercase tracking-[0.28em] text-stone-500">平假名</div>
-              <div className="mt-4 text-6xl font-semibold leading-none text-stone-900">{kana.hiragana}</div>
-              <div className="mt-4 text-sm text-stone-500">字源：{getKanaOrigin(kana, "hiragana") ?? "待补充"}</div>
+            <div className={`border p-4 transition duration-200 ${activeType === "hiragana" ? "border-stone-900 bg-stone-100" : "border-stone-300 bg-white"}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs uppercase tracking-[0.28em] text-stone-500">平假名</div>
+                {activeType === "hiragana" ? <span className="text-xs text-stone-500">当前焦点</span> : null}
+              </div>
+              <div lang="ja-JP" className="mt-4 text-6xl font-semibold leading-none text-stone-900">{displayKana.hiragana}</div>
+              <div className="mt-4 text-sm text-stone-500">字源：{getKanaOrigin(displayKana, "hiragana") ?? "待补充"}</div>
             </div>
-            <div className={`border p-4 ${activeType === "katakana" ? "border-stone-900 bg-stone-100" : "border-stone-300 bg-white"}`}>
-              <div className="text-xs uppercase tracking-[0.28em] text-stone-500">片假名</div>
-              <div className="mt-4 text-6xl font-semibold leading-none text-stone-900">{kana.katakana}</div>
-              <div className="mt-4 text-sm text-stone-500">字源：{getKanaOrigin(kana, "katakana") ?? "待补充"}</div>
+            <div className={`border p-4 transition duration-200 ${activeType === "katakana" ? "border-stone-900 bg-stone-100" : "border-stone-300 bg-white"}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs uppercase tracking-[0.28em] text-stone-500">片假名</div>
+                {activeType === "katakana" ? <span className="text-xs text-stone-500">当前焦点</span> : null}
+              </div>
+              <div lang="ja-JP" className="mt-4 text-6xl font-semibold leading-none text-stone-900">{displayKana.katakana}</div>
+              <div className="mt-4 text-sm text-stone-500">字源：{getKanaOrigin(displayKana, "katakana") ?? "待补充"}</div>
             </div>
           </div>
 
-          <div className="border border-stone-300 bg-white p-4">
+          <div className="border border-stone-300 bg-white p-4 sm:p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <div className="text-xs uppercase tracking-[0.28em] text-stone-500">发音</div>
@@ -229,13 +311,13 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
                 className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-stone-50 transition hover:bg-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-400"
                 aria-live="polite"
               >
-                {audioState === "playing" ? "播放中…" : "播放发音"}
+                {audioState === "playing" ? "播放中…" : `播放 ${primaryChar}`}
               </button>
             </div>
-            <div className="mt-4 flex flex-wrap gap-3 text-xs text-stone-500">
-              <span>优先级：本地音频 → TTS</span>
-              <span>状态：{audioState}</span>
-              {audioSource ? <span>来源：{audioSource}</span> : null}
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-stone-500">
+              <span className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1">优先级：本地音频 → TTS</span>
+              <span className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1">状态：{audioStatusLabel}</span>
+              {audioSource ? <span className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1">来源：{audioSource}</span> : null}
             </div>
             {audioState === "error" ? <p className="mt-3 text-sm text-amber-700">{audioErrorMessage}</p> : null}
           </div>
@@ -243,18 +325,18 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="border border-stone-300 bg-white p-4">
               <div className="text-xs uppercase tracking-[0.28em] text-stone-500">罗马音</div>
-              <div className="mt-2 text-2xl font-semibold text-stone-900">{kana.romaji}</div>
+              <div className="mt-2 text-2xl font-semibold text-stone-900">{displayKana.romaji}</div>
             </div>
             <div className="border border-stone-300 bg-white p-4">
               <div className="text-xs uppercase tracking-[0.28em] text-stone-500">所在列</div>
-              <div className="mt-2 text-2xl font-semibold text-stone-900">{kana.column.toUpperCase()}</div>
+              <div className="mt-2 text-2xl font-semibold text-stone-900">{displayKana.column.toUpperCase()}</div>
             </div>
           </div>
 
           <div className="border border-stone-300 bg-white p-4">
             <div className="text-xs uppercase tracking-[0.28em] text-stone-500">学习备注</div>
             <p className="mt-3 text-sm leading-7 text-stone-600">
-              {kana.notes ?? "这一项还没有额外备注，后续可以继续补充记忆提示与常见读音场景。"}
+              {displayKana.notes ?? "这一项还没有额外备注，后续可以继续补充记忆提示与常见读音场景。"}
             </p>
           </div>
         </div>
