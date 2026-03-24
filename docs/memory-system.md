@@ -42,6 +42,22 @@
 - 今天有多少复习内容
 - 现在最值得先做哪一部分
 
+### 5. 本地优先，但从第一天开始可迁移
+
+第一版先使用本地存储，不是因为它是最终形态，而是因为它能最低成本验证：
+
+- 状态字段是否合理
+- 调度规则是否顺手
+- 用户每天的复习负担是否可控
+
+但架构上必须把三层拆开：
+
+- `memory model`：状态类型与领域字段
+- `memory engine`：调度与状态更新纯函数
+- `memory repository`：读写状态的存储适配层
+
+这样第一版可以用 `localStorage`，后续接数据库时只需要替换 repository 实现，而不必重写调度逻辑或 UI。
+
 ## 系统边界
 
 ## 第一阶段纳入记忆系统的内容
@@ -57,6 +73,7 @@
 - 句子级学习
 - 复杂语法知识点
 - 开放输入评分
+- 多端同步与账户系统
 
 ## 用户流程
 
@@ -114,6 +131,25 @@ interface KanaMemoryState {
   status: "new" | "learning" | "review" | "mastered";
 }
 ```
+
+### 存储抽象建议
+
+```ts
+interface MemoryRepository {
+  loadStates(): Promise<Record<string, KanaMemoryState>>;
+  saveStates(states: Record<string, KanaMemoryState>): Promise<void>;
+}
+```
+
+第一版：
+
+- 使用 `localStorageMemoryRepository`
+
+后续可扩展：
+
+- `apiMemoryRepository`
+- `supabaseMemoryRepository`
+- `sqliteMemoryRepository`
 
 ### 字段解释
 
@@ -326,14 +362,16 @@ easy  => nextIn = max(4 days, stability * 3 days)
 - 每日复习负担可控
 - 新内容引入不会迅速形成复习债
 - 状态计算逻辑足够简单、可解释、可调试
+- 后续更换存储后端时，不需要重写调度逻辑
 
 ## 推荐落地顺序
 
 ### Phase A：结构先行
 
 - 建立 `KanaMemoryState`
-- 建立本地存储
+- 建立本地存储 repository
 - 建立 `due today` 计算逻辑
+- 建立可迁移的存储接口
 - 增加学习面板入口
 
 ### Phase B：最小练习闭环
@@ -354,6 +392,12 @@ easy  => nextIn = max(4 days, stability * 3 days)
 - 更细地建模困难项
 - 逐步向 `FSRS-lite` 的个性化方向靠近
 
+### Phase E：后端迁移
+
+- 保持 memory model 与 scheduler 不变
+- 新增远端 repository 实现
+- 逐步加入登录、同步与冲突处理
+
 ## 当前建议
 
 对 `kana` 来说，下一步最有价值的不是继续堆更多静态内容，而是：
@@ -361,4 +405,5 @@ easy  => nextIn = max(4 days, stability * 3 days)
 1. 把五十音从“可浏览内容”升级为“可调度学习项”
 2. 建立最小可用复习系统
 3. 先做简单、可解释、稳定的调度规则
-4. 后续再考虑更高阶的个性化参数优化
+4. 用本地 repository 快速验证状态层
+5. 后续再考虑更高阶的个性化参数优化与数据库迁移

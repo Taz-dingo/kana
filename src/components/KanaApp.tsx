@@ -1,12 +1,20 @@
 import { useMemo, useState } from "react";
 import type { KanaEntry, KanaType } from "../data/kana";
 import { getKanaChar, kanaRows } from "../data/kana";
-import KanaGrid from "./KanaGrid";
+import { getDueKanaIds } from "../lib/memory/scheduler";
+import { useKanaMemory } from "../hooks/useKanaMemory";
 import DetailPanel from "./DetailPanel";
+import KanaGrid from "./KanaGrid";
+import PracticeLauncher from "./PracticeLauncher";
+import PracticeSession from "./PracticeSession";
+
+type PracticeMode = "review" | "learn" | null;
 
 export default function KanaApp() {
   const [type, setType] = useState<KanaType>("hiragana");
   const [selectedKana, setSelectedKana] = useState<KanaEntry | null>(null);
+  const [isPracticeLauncherOpen, setIsPracticeLauncherOpen] = useState(false);
+  const [practiceMode, setPracticeMode] = useState<PracticeMode>(null);
 
   const totalEntries = useMemo(
     () => kanaRows.reduce((count, row) => count + row.entries.filter(Boolean).length, 0),
@@ -17,6 +25,15 @@ export default function KanaApp() {
     () => kanaRows.flatMap((row) => row.entries.filter((entry): entry is KanaEntry => Boolean(entry))),
     []
   );
+
+  const { counts, isReady, reviewKana, states } = useKanaMemory(orderedEntries.map((entry) => entry.id));
+
+  const dueEntryIds = useMemo(() => getDueKanaIds(states), [states]);
+  const newEntryIds = useMemo(
+    () => orderedEntries.map((entry) => entry.id).filter((id) => !states[id] || states[id].status === "new"),
+    [orderedEntries, states]
+  );
+  const learnEntryIds = useMemo(() => newEntryIds.slice(0, 8), [newEntryIds]);
 
   const selectedIndex = useMemo(() => {
     if (!selectedKana) {
@@ -30,12 +47,29 @@ export default function KanaApp() {
   const nextKana = selectedIndex >= 0 && selectedIndex < orderedEntries.length - 1 ? orderedEntries[selectedIndex + 1] : null;
   const currentFocusChar = selectedKana ? getKanaChar(selectedKana, type) : "—";
   const progressLabel = selectedIndex >= 0 ? `${selectedIndex + 1} / ${orderedEntries.length}` : `0 / ${orderedEntries.length}`;
+  const canOpenPractice = isReady && (dueEntryIds.length > 0 || newEntryIds.length > 0);
+  const sessionEntryIds = practiceMode === "review" ? dueEntryIds : practiceMode === "learn" ? learnEntryIds : [];
 
   const openFirstEntry = () => {
     const firstEntry = orderedEntries[0];
     if (firstEntry) {
       setSelectedKana(firstEntry);
     }
+  };
+
+  const closePractice = () => {
+    setPracticeMode(null);
+    setIsPracticeLauncherOpen(false);
+  };
+
+  const startReview = () => {
+    setPracticeMode("review");
+    setIsPracticeLauncherOpen(false);
+  };
+
+  const startLearn = () => {
+    setPracticeMode("learn");
+    setIsPracticeLauncherOpen(false);
   };
 
   return (
@@ -62,9 +96,14 @@ export default function KanaApp() {
                 >
                   从第一个字符开始
                 </button>
-                <div className="rounded-full border border-stone-300 bg-white/60 px-4 py-2.5 text-stone-500">
-                  总览 → 对照 → 发音 → 连续浏览
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPracticeLauncherOpen(true)}
+                  disabled={!canOpenPractice}
+                  className="rounded-full border border-stone-300 bg-white/80 px-4 py-2.5 text-stone-700 transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  进入学习面板
+                </button>
               </div>
             </div>
 
@@ -133,6 +172,17 @@ export default function KanaApp() {
                   <span>{selectedKana ? `下一项：${nextKana?.romaji ?? "已到最后一个"}` : `共 ${orderedEntries.length} 个字符`}</span>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4 border-t border-stone-200 pt-4 text-sm">
+                <div>
+                  <div className="text-stone-500">今日待复习</div>
+                  <div className="mt-2 text-3xl font-semibold text-stone-900">{isReady ? counts.dueCount : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-stone-500">待学习新字符</div>
+                  <div className="mt-2 text-3xl font-semibold text-stone-900">{isReady ? counts.newCount : "—"}</div>
+                </div>
+              </div>
             </div>
           </div>
         </header>
@@ -168,6 +218,27 @@ export default function KanaApp() {
         currentIndex={selectedIndex}
         totalCount={orderedEntries.length}
       />
+
+      {isPracticeLauncherOpen ? (
+        <PracticeLauncher
+          dueCount={counts.dueCount}
+          newCount={counts.newCount}
+          onClose={() => setIsPracticeLauncherOpen(false)}
+          onStartReview={startReview}
+          onStartLearn={startLearn}
+        />
+      ) : null}
+
+      {practiceMode ? (
+        <PracticeSession
+          entries={orderedEntries}
+          activeType={type}
+          entryIds={sessionEntryIds}
+          mode={practiceMode}
+          onClose={closePractice}
+          onReview={reviewKana}
+        />
+      ) : null}
     </div>
   );
 }
