@@ -6,6 +6,12 @@ interface DetailPanelProps {
   kana: KanaEntry | null;
   activeType: KanaType;
   onClose: () => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  previousKana?: KanaEntry | null;
+  nextKana?: KanaEntry | null;
+  currentIndex?: number;
+  totalCount?: number;
 }
 
 type AudioState = "idle" | "playing" | "error";
@@ -15,7 +21,17 @@ const FOCUSABLE_SELECTOR =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 const EXIT_DURATION_MS = 180;
 
-export default function DetailPanel({ kana, activeType, onClose }: DetailPanelProps) {
+export default function DetailPanel({
+  kana,
+  activeType,
+  onClose,
+  onPrevious,
+  onNext,
+  previousKana,
+  nextKana,
+  currentIndex = -1,
+  totalCount = 0,
+}: DetailPanelProps) {
   const [audioState, setAudioState] = useState<AudioState>("idle");
   const [audioSource, setAudioSource] = useState<AudioSource>(null);
   const [displayKana, setDisplayKana] = useState<KanaEntry | null>(kana);
@@ -32,6 +48,7 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
   );
   const activeLabel = activeType === "hiragana" ? "平假名" : "片假名";
   const inactiveLabel = activeType === "hiragana" ? "片假名" : "平假名";
+  const progressLabel = currentIndex >= 0 && totalCount > 0 ? `${currentIndex + 1} / ${totalCount}` : null;
 
   useEffect(() => {
     if (closeTimerRef.current) {
@@ -98,6 +115,18 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
         return;
       }
 
+      if (event.key === "ArrowLeft" && onPrevious) {
+        event.preventDefault();
+        onPrevious();
+        return;
+      }
+
+      if (event.key === "ArrowRight" && onNext) {
+        event.preventDefault();
+        onNext();
+        return;
+      }
+
       if (event.key !== "Tab" || !panelRef.current) {
         return;
       }
@@ -142,7 +171,7 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
       audioRef.current = null;
       lastFocusedElementRef.current?.focus();
     };
-  }, [displayKana, onClose]);
+  }, [displayKana, onClose, onNext, onPrevious]);
 
   useEffect(() => {
     setAudioState("idle");
@@ -246,14 +275,21 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
                 {displayKana.row} · 当前主视图：{activeLabel}
               </p>
             </div>
-            <button
-              ref={closeButtonRef}
-              type="button"
-              onClick={onClose}
-              className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-600 transition hover:border-stone-500 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-400"
-            >
-              关闭
-            </button>
+            <div className="flex items-center gap-2">
+              {progressLabel ? (
+                <span className="rounded-full border border-stone-300 bg-white px-3 py-1 text-xs text-stone-500">
+                  {progressLabel}
+                </span>
+              ) : null}
+              <button
+                ref={closeButtonRef}
+                type="button"
+                onClick={onClose}
+                className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-600 transition hover:border-stone-500 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-400"
+              >
+                关闭
+              </button>
+            </div>
           </div>
 
           <div className="mt-6 grid gap-4 border-t border-stone-200 pt-5 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-end">
@@ -276,6 +312,33 @@ export default function DetailPanel({ kana, activeType, onClose }: DetailPanelPr
                 先记当前主视图字符，再用右侧对照确认另一套写法，最后播放发音把字形和声音绑在一起。
               </p>
             </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 border-t border-stone-200 pt-5 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={onPrevious}
+              disabled={!onPrevious}
+              className="flex items-center justify-between border border-stone-300 bg-white px-4 py-3 text-left transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <span>
+                <span className="block text-xs uppercase tracking-[0.28em] text-stone-400">Previous</span>
+                <span className="mt-2 block text-sm text-stone-700">{previousKana ? previousKana.romaji : "已经是第一个"}</span>
+              </span>
+              <span lang="ja-JP" className="text-2xl text-stone-900">{previousKana ? getKanaChar(previousKana, activeType) : "—"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              disabled={!onNext}
+              className="flex items-center justify-between border border-stone-300 bg-white px-4 py-3 text-left transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <span>
+                <span className="block text-xs uppercase tracking-[0.28em] text-stone-400">Next</span>
+                <span className="mt-2 block text-sm text-stone-700">{nextKana ? nextKana.romaji : "已经是最后一个"}</span>
+              </span>
+              <span lang="ja-JP" className="text-2xl text-stone-900">{nextKana ? getKanaChar(nextKana, activeType) : "—"}</span>
+            </button>
           </div>
         </div>
 

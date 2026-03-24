@@ -13,10 +13,26 @@ export default function KanaApp() {
     []
   );
 
+  const orderedEntries = useMemo(
+    () => kanaRows.flatMap((row) => row.entries.filter((entry): entry is KanaEntry => Boolean(entry))),
+    []
+  );
+
+  const selectedIndex = useMemo(() => {
+    if (!selectedKana) {
+      return -1;
+    }
+
+    return orderedEntries.findIndex((entry) => entry.id === selectedKana.id);
+  }, [orderedEntries, selectedKana]);
+
+  const previousKana = selectedIndex > 0 ? orderedEntries[selectedIndex - 1] : null;
+  const nextKana = selectedIndex >= 0 && selectedIndex < orderedEntries.length - 1 ? orderedEntries[selectedIndex + 1] : null;
   const currentFocusChar = selectedKana ? getKanaChar(selectedKana, type) : "—";
+  const progressLabel = selectedIndex >= 0 ? `${selectedIndex + 1} / ${orderedEntries.length}` : `0 / ${orderedEntries.length}`;
 
   const openFirstEntry = () => {
-    const firstEntry = kanaRows[0]?.entries.find(Boolean);
+    const firstEntry = orderedEntries[0];
     if (firstEntry) {
       setSelectedKana(firstEntry);
     }
@@ -47,7 +63,7 @@ export default function KanaApp() {
                   从第一个字符开始
                 </button>
                 <div className="rounded-full border border-stone-300 bg-white/60 px-4 py-2.5 text-stone-500">
-                  总览 → 对照 → 发音
+                  总览 → 对照 → 发音 → 连续浏览
                 </div>
               </div>
             </div>
@@ -103,14 +119,18 @@ export default function KanaApp() {
                 <div className="flex items-end justify-between gap-4">
                   <div>
                     <div className="text-xs uppercase tracking-[0.28em] text-stone-500">Current</div>
-                    <div className="mt-2 text-6xl font-semibold leading-none tracking-[-0.05em] text-stone-900">
+                    <div lang="ja-JP" className="mt-2 text-6xl font-semibold leading-none tracking-[-0.05em] text-stone-900">
                       {currentFocusChar}
                     </div>
                   </div>
                   <div className="text-right text-sm text-stone-500">
                     <div>{type === "hiragana" ? "主视图：平假名" : "主视图：片假名"}</div>
-                    <div className="mt-1">{selectedKana ? "已选中单字，可直接查看详情" : "先点任意字符打开详情"}</div>
+                    <div className="mt-1">{selectedKana ? `学习进度：${progressLabel}` : "先点任意字符打开详情"}</div>
                   </div>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-xs text-stone-500">
+                  <span>{selectedKana ? `上一项：${previousKana?.romaji ?? "—"}` : "还未开始连续浏览"}</span>
+                  <span>{selectedKana ? `下一项：${nextKana?.romaji ?? "已到最后一个"}` : `共 ${orderedEntries.length} 个字符`}</span>
                 </div>
               </div>
             </div>
@@ -137,7 +157,17 @@ export default function KanaApp() {
         </main>
       </div>
 
-      <DetailPanel kana={selectedKana} activeType={type} onClose={() => setSelectedKana(null)} />
+      <DetailPanel
+        kana={selectedKana}
+        activeType={type}
+        onClose={() => setSelectedKana(null)}
+        onPrevious={previousKana ? () => setSelectedKana(previousKana) : undefined}
+        onNext={nextKana ? () => setSelectedKana(nextKana) : undefined}
+        previousKana={previousKana}
+        nextKana={nextKana}
+        currentIndex={selectedIndex}
+        totalCount={orderedEntries.length}
+      />
     </div>
   );
 }
