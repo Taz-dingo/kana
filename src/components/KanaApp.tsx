@@ -8,7 +8,7 @@ import KanaGrid from "./KanaGrid";
 import PracticeLauncher from "./PracticeLauncher";
 import PracticeSession from "./PracticeSession";
 
-type PracticeMode = "review" | "learn" | null;
+type PracticeMode = "review" | "learn" | "weak" | null;
 
 export default function KanaApp() {
   const [type, setType] = useState<KanaType>("hiragana");
@@ -26,7 +26,7 @@ export default function KanaApp() {
     []
   );
 
-  const { counts, isReady, reviewKana, states } = useKanaMemory(orderedEntries.map((entry) => entry.id));
+  const { counts, isReady, reviewKana, states, weakKanaIds } = useKanaMemory(orderedEntries.map((entry) => entry.id));
 
   const dueEntryIds = useMemo(() => getDueKanaIds(states), [states]);
   const newEntryIds = useMemo(
@@ -47,8 +47,15 @@ export default function KanaApp() {
   const nextKana = selectedIndex >= 0 && selectedIndex < orderedEntries.length - 1 ? orderedEntries[selectedIndex + 1] : null;
   const currentFocusChar = selectedKana ? getKanaChar(selectedKana, type) : "—";
   const progressLabel = selectedIndex >= 0 ? `${selectedIndex + 1} / ${orderedEntries.length}` : `0 / ${orderedEntries.length}`;
-  const canOpenPractice = isReady && (dueEntryIds.length > 0 || newEntryIds.length > 0);
-  const sessionEntryIds = practiceMode === "review" ? dueEntryIds : practiceMode === "learn" ? learnEntryIds : [];
+  const canOpenPractice = isReady && (dueEntryIds.length > 0 || newEntryIds.length > 0 || weakKanaIds.length > 0);
+  const sessionEntryIds =
+    practiceMode === "review"
+      ? dueEntryIds
+      : practiceMode === "learn"
+        ? learnEntryIds
+        : practiceMode === "weak"
+          ? weakKanaIds
+          : [];
 
   const openFirstEntry = () => {
     const firstEntry = orderedEntries[0];
@@ -69,6 +76,11 @@ export default function KanaApp() {
 
   const startLearn = () => {
     setPracticeMode("learn");
+    setIsPracticeLauncherOpen(false);
+  };
+
+  const startWeak = () => {
+    setPracticeMode("weak");
     setIsPracticeLauncherOpen(false);
   };
 
@@ -173,7 +185,7 @@ export default function KanaApp() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 border-t border-stone-200 pt-4 text-sm">
+              <div className="grid grid-cols-3 gap-4 border-t border-stone-200 pt-4 text-sm">
                 <div>
                   <div className="text-stone-500">今日待复习</div>
                   <div className="mt-2 text-3xl font-semibold text-stone-900">{isReady ? counts.dueCount : "—"}</div>
@@ -181,6 +193,10 @@ export default function KanaApp() {
                 <div>
                   <div className="text-stone-500">待学习新字符</div>
                   <div className="mt-2 text-3xl font-semibold text-stone-900">{isReady ? counts.newCount : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-stone-500">弱项强化</div>
+                  <div className="mt-2 text-3xl font-semibold text-stone-900">{isReady ? weakKanaIds.length : "—"}</div>
                 </div>
               </div>
             </div>
@@ -223,9 +239,11 @@ export default function KanaApp() {
         <PracticeLauncher
           dueCount={counts.dueCount}
           newCount={counts.newCount}
+          weakCount={weakKanaIds.length}
           onClose={() => setIsPracticeLauncherOpen(false)}
           onStartReview={startReview}
           onStartLearn={startLearn}
+          onStartWeak={startWeak}
         />
       ) : null}
 
@@ -234,7 +252,7 @@ export default function KanaApp() {
           entries={orderedEntries}
           activeType={type}
           entryIds={sessionEntryIds}
-          mode={practiceMode}
+          mode={practiceMode === "weak" ? "review" : practiceMode}
           onClose={closePractice}
           onReview={reviewKana}
         />

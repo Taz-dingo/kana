@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getWeakKanaIds } from "../lib/memory/analytics";
 import { createLocalStorageMemoryRepository } from "../lib/memory/repository";
 import { applyReviewResult, getMemoryCounts, getOrCreateKanaState } from "../lib/memory/scheduler";
 import type { KanaMemoryStateMap, KanaReviewResult } from "../lib/memory/types";
@@ -45,6 +46,7 @@ export function useKanaMemory(allKanaIds: string[]) {
   }, []);
 
   const counts = useMemo(() => getMemoryCounts(states, allKanaIds), [allKanaIds, states]);
+  const weakKanaIds = useMemo(() => getWeakKanaIds(states), [states]);
 
   return {
     isReady,
@@ -52,5 +54,6 @@ export function useKanaMemory(allKanaIds: string[]) {
     replaceStates,
     reviewKana,
     counts,
+    weakKanaIds,
   };
 }

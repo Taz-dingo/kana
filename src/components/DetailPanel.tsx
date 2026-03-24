@@ -41,6 +41,8 @@ export default function DetailPanel({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
   const closeTimerRef = useRef<number | null>(null);
+  const openFrameRef = useRef<number | null>(null);
+  const openFrameNestedRef = useRef<number | null>(null);
 
   const primaryChar = useMemo(
     () => (displayKana ? getKanaChar(displayKana, activeType) : ""),
@@ -56,11 +58,32 @@ export default function DetailPanel({
       closeTimerRef.current = null;
     }
 
+    if (openFrameRef.current) {
+      window.cancelAnimationFrame(openFrameRef.current);
+      openFrameRef.current = null;
+    }
+
+    if (openFrameNestedRef.current) {
+      window.cancelAnimationFrame(openFrameNestedRef.current);
+      openFrameNestedRef.current = null;
+    }
+
     if (kana) {
       setDisplayKana(kana);
-      window.requestAnimationFrame(() => {
+
+      if (!displayKana) {
+        setIsVisible(false);
+        openFrameRef.current = window.requestAnimationFrame(() => {
+          openFrameNestedRef.current = window.requestAnimationFrame(() => {
+            setIsVisible(true);
+            openFrameRef.current = null;
+            openFrameNestedRef.current = null;
+          });
+        });
+      } else {
         setIsVisible(true);
-      });
+      }
+
       return;
     }
 
@@ -77,6 +100,12 @@ export default function DetailPanel({
     return () => {
       if (closeTimerRef.current) {
         window.clearTimeout(closeTimerRef.current);
+      }
+      if (openFrameRef.current) {
+        window.cancelAnimationFrame(openFrameRef.current);
+      }
+      if (openFrameNestedRef.current) {
+        window.cancelAnimationFrame(openFrameNestedRef.current);
       }
     };
   }, []);
@@ -105,7 +134,7 @@ export default function DetailPanel({
     document.body.style.width = "100%";
 
     const focusTimer = window.setTimeout(() => {
-      closeButtonRef.current?.focus();
+      panelRef.current?.focus();
     }, 40);
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -249,7 +278,7 @@ export default function DetailPanel({
   return (
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center px-4 py-6 transition duration-200 ease-out ${
-        isVisible ? "bg-stone-900/35 opacity-100" : "bg-stone-900/0 opacity-0"
+        isVisible ? "bg-stone-900/35 opacity-100" : "bg-stone-900/0 opacity-0 pointer-events-none"
       }`}
       onClick={onClose}
       aria-hidden={!isVisible}
@@ -257,9 +286,10 @@ export default function DetailPanel({
       <div
         ref={panelRef}
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="kana-detail-title"
-        className={`max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-stone-300 bg-[#fbf8f1] shadow-[0_24px_80px_rgba(28,25,23,0.16)] transition duration-200 ease-out ${
+        className={`max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-stone-300 bg-[#fbf8f1] shadow-[0_24px_80px_rgba(28,25,23,0.16)] will-change-transform transition duration-300 ease-out ${
           isVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-[0.985] opacity-0"
         }`}
         onClick={(event) => event.stopPropagation()}
@@ -285,7 +315,7 @@ export default function DetailPanel({
                 ref={closeButtonRef}
                 type="button"
                 onClick={onClose}
-                className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-600 transition hover:border-stone-500 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-400"
+                className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-600 transition hover:border-stone-500 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400"
               >
                 关闭
               </button>
@@ -371,7 +401,7 @@ export default function DetailPanel({
               <button
                 type="button"
                 onClick={handlePlayAudio}
-                className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-stone-50 transition hover:bg-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-400"
+                className="rounded-full bg-stone-900 px-4 py-2 text-sm font-medium text-stone-50 transition hover:bg-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400"
                 aria-live="polite"
               >
                 {audioState === "playing" ? "播放中…" : `播放 ${primaryChar}`}
