@@ -26,7 +26,9 @@ export default function KanaApp() {
     []
   );
 
-  const { counts, isReady, reviewKana, states, weakKanaIds } = useKanaMemory(orderedEntries.map((entry) => entry.id));
+  const { counts, isReady, reviewKana, states, todayProgress, weakKanaIds } = useKanaMemory(
+    orderedEntries.map((entry) => entry.id)
+  );
 
   const dueEntryIds = useMemo(() => getDueKanaIds(states), [states]);
   const newEntryIds = useMemo(
@@ -199,6 +201,17 @@ export default function KanaApp() {
                   <div className="mt-2 text-3xl font-semibold text-stone-900">{isReady ? weakKanaIds.length : "—"}</div>
                 </div>
               </div>
+
+              <div className="grid gap-3 border-t border-stone-200 pt-4 text-sm">
+                <div className="text-stone-500">今日进度</div>
+                <div className="flex flex-wrap gap-2 text-stone-600">
+                  <span className="rounded-full border border-stone-300 bg-white px-3 py-1">已复习 {isReady ? todayProgress.reviewedTodayCount : "—"}</span>
+                  <span className="rounded-full border border-stone-300 bg-white px-3 py-1">已引入 {isReady ? todayProgress.introducedTodayCount : "—"}</span>
+                  {isReady && todayProgress.clearedDue ? (
+                    <span className="rounded-full border border-emerald-700 bg-emerald-50 px-3 py-1 text-emerald-700">今日复习已清空</span>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </div>
         </header>
@@ -255,6 +268,7 @@ export default function KanaApp() {
           mode={practiceMode === "weak" ? "review" : practiceMode}
           onClose={closePractice}
           onReview={reviewKana}
+          todayProgress={todayProgress}
         />
       ) : null}
     </div>

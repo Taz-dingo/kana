@@ -10,6 +10,11 @@ interface PracticeSessionProps {
   mode: "review" | "learn";
   onClose: () => void;
   onReview: (kanaId: string, result: KanaReviewResult) => void;
+  todayProgress: {
+    reviewedTodayCount: number;
+    introducedTodayCount: number;
+    clearedDue: boolean;
+  };
 }
 
 type QuestionType = "romaji_to_kana" | "kana_to_romaji";
@@ -48,7 +53,15 @@ function buildQuestion(entries: KanaEntry[], entryId: string, askedCount: number
   };
 }
 
-export default function PracticeSession({ entries, activeType, entryIds, mode, onClose, onReview }: PracticeSessionProps) {
+export default function PracticeSession({
+  entries,
+  activeType,
+  entryIds,
+  mode,
+  onClose,
+  onReview,
+  todayProgress,
+}: PracticeSessionProps) {
   const [queueIds, setQueueIds] = useState(entryIds);
   const [askedIds, setAskedIds] = useState<string[]>([]);
   const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
@@ -136,6 +149,15 @@ export default function PracticeSession({ entries, activeType, entryIds, mode, o
             <div className="border border-stone-300 bg-white p-4">
               <div className="text-xs uppercase tracking-[0.28em] text-stone-500">Wrong</div>
               <div className="mt-2 text-2xl font-semibold text-stone-900">{wrongEntries.length}</div>
+            </div>
+          </div>
+
+          <div className="mt-6 border border-stone-300 bg-white p-4">
+            <div className="text-xs uppercase tracking-[0.28em] text-stone-500">Today</div>
+            <div className="mt-3 flex flex-wrap gap-2 text-sm text-stone-600">
+              <span className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1">今日已复习 {todayProgress.reviewedTodayCount}</span>
+              <span className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1">今日已引入 {todayProgress.introducedTodayCount}</span>
+              {todayProgress.clearedDue ? <span className="rounded-full border border-emerald-700 bg-emerald-50 px-3 py-1 text-emerald-700">今日待复习已清空</span> : null}
             </div>
           </div>
 
