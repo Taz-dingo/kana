@@ -1,6 +1,7 @@
 import { MASTERED_STABILITY_THRESHOLD } from "./constants";
-import { createNewKanaMemoryState } from "./state";
-import type { KanaMemoryState, KanaMemoryStateMap, KanaReviewResult } from "./types";
+import { createKanaItemKey, createMemoryItemKey } from "./item-key";
+import { createNewKanaMemoryState, createNewMemoryState } from "./state";
+import type { KanaMemoryState, KanaMemoryStateMap, KanaReviewResult, MemoryCounts, MemoryItemState, MemoryItemType, MemoryStateMap, ReviewResult } from "./types";
 
 const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -10,28 +11,48 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-export function getOrCreateKanaState(states: KanaMemoryStateMap, kanaId: string) {
-  return states[kanaId] ?? createNewKanaMemoryState(kanaId);
+export function getOrCreateMemoryState(states: MemoryStateMap, itemId: string, itemType: MemoryItemType = "kana") {
+  const itemKey = createMemoryItemKey(itemType, itemId);
+  return states[itemKey] ?? createNewMemoryState(itemId, itemType);
 }
 
-export function getDueKanaIds(states: KanaMemoryStateMap, now = new Date()) {
+export function getOrCreateKanaState(states: KanaMemoryStateMap, kanaId: string) {
+  return states[createKanaItemKey(kanaId)] ?? createNewKanaMemoryState(kanaId);
+}
+
+export function getDueItemIds(states: MemoryStateMap, now = new Date(), itemType?: MemoryItemType) {
   const currentTime = now.getTime();
 
   return Object.values(states)
-    .filter((state) => state.dueAt && new Date(state.dueAt).getTime() <= currentTime)
+    .filter((state) => {
+      if (itemType && state.itemType !== itemType) {
+        return false;
+      }
+
+      return Boolean(state.dueAt && new Date(state.dueAt).getTime() <= currentTime);
+    })
     .sort((left, right) => new Date(left.dueAt ?? 0).getTime() - new Date(right.dueAt ?? 0).getTime())
-    .map((state) => state.kanaId);
+    .map((state) => state.itemId);
 }
 
-export function getMemoryCounts(states: KanaMemoryStateMap, allKanaIds: string[], now = new Date()) {
-  const dueIds = new Set(getDueKanaIds(states, now));
+export function getDueKanaIds(states: KanaMemoryStateMap, now = new Date()) {
+  return getDueItemIds(states, now, "kana");
+}
+
+export function getMemoryCountsForItems(
+  states: MemoryStateMap,
+  allItemIds: string[],
+  now = new Date(),
+  itemType?: MemoryItemType
+): MemoryCounts {
+  const dueIds = new Set(getDueItemIds(states, now, itemType));
   let learningCount = 0;
   let reviewCount = 0;
   let masteredCount = 0;
   let newCount = 0;
 
-  for (const kanaId of allKanaIds) {
-    const state = states[kanaId];
+  for (const itemId of allItemIds) {
+    const state = states[itemType ? createMemoryItemKey(itemType, itemId) : itemId];
     if (!state || state.status === "new") {
       newCount += 1;
       continue;
@@ -47,7 +68,7 @@ export function getMemoryCounts(states: KanaMemoryStateMap, allKanaIds: string[]
       continue;
     }
 
-    if (dueIds.has(kanaId)) {
+    if (dueIds.has(itemId)) {
       reviewCount += 1;
     }
   }
@@ -59,6 +80,10 @@ export function getMemoryCounts(states: KanaMemoryStateMap, allKanaIds: string[]
     reviewCount,
     masteredCount,
   };
+}
+
+export function getMemoryCounts(states: KanaMemoryStateMap, allKanaIds: string[], now = new Date()) {
+  return getMemoryCountsForItems(states, allKanaIds, now, "kana");
 }
 
 function getNextIntervalMs(result: KanaReviewResult, stability: number) {
@@ -75,10 +100,10 @@ function getNextIntervalMs(result: KanaReviewResult, stability: number) {
 }
 
 export function applyReviewResult(
-  state: KanaMemoryState,
-  result: KanaReviewResult,
+  state: MemoryItemState,
+  result: ReviewResult,
   now = new Date()
-): KanaMemoryState {
+): MemoryItemState {
   const reviewCount = state.reviewCount + 1;
   const lapseCount = result === "again" ? state.lapseCount + 1 : state.lapseCount;
   const difficultyDelta =

@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import type { KanaEntry, KanaType } from "../data/kana";
 import { getKanaChar, kanaRows } from "../data/kana";
-import { getDueKanaIds } from "../lib/memory/scheduler";
 import { useKanaMemory } from "../hooks/useKanaMemory";
 import DetailPanel from "./DetailPanel";
 import KanaGrid from "./KanaGrid";
 import PracticeLauncher from "./PracticeLauncher";
 import PracticeSession from "./PracticeSession";
+import WeakKanaPanel from "./WeakKanaPanel";
 
 type PracticeMode = "review" | "learn" | "weak" | null;
 
@@ -26,11 +26,10 @@ export default function KanaApp() {
     []
   );
 
-  const { counts, isReady, reviewKana, states, todayProgress, weakKanaIds } = useKanaMemory(
+  const { counts, dueKanaIds, isReady, reviewKana, states, todayProgress, weakKanaIds, weakKanaInsights } = useKanaMemory(
     orderedEntries.map((entry) => entry.id)
   );
 
-  const dueEntryIds = useMemo(() => getDueKanaIds(states), [states]);
   const newEntryIds = useMemo(
     () => orderedEntries.map((entry) => entry.id).filter((id) => !states[id] || states[id].status === "new"),
     [orderedEntries, states]
@@ -49,10 +48,10 @@ export default function KanaApp() {
   const nextKana = selectedIndex >= 0 && selectedIndex < orderedEntries.length - 1 ? orderedEntries[selectedIndex + 1] : null;
   const currentFocusChar = selectedKana ? getKanaChar(selectedKana, type) : "—";
   const progressLabel = selectedIndex >= 0 ? `${selectedIndex + 1} / ${orderedEntries.length}` : `0 / ${orderedEntries.length}`;
-  const canOpenPractice = isReady && (dueEntryIds.length > 0 || newEntryIds.length > 0 || weakKanaIds.length > 0);
+  const canOpenPractice = isReady && (dueKanaIds.length > 0 || newEntryIds.length > 0 || weakKanaIds.length > 0);
   const sessionEntryIds =
     practiceMode === "review"
-      ? dueEntryIds
+      ? dueKanaIds
       : practiceMode === "learn"
         ? learnEntryIds
         : practiceMode === "weak"
@@ -226,6 +225,16 @@ export default function KanaApp() {
               保留真实空位，减少误导；用更稳定的行列节奏帮助记忆。点击任意字符即可进入详情、对照另一套写法并播放发音。
             </p>
           </div>
+
+          {isReady ? (
+            <WeakKanaPanel
+              entries={orderedEntries}
+              activeType={type}
+              insights={weakKanaInsights}
+              onOpenDetails={setSelectedKana}
+              onStartWeakPractice={startWeak}
+            />
+          ) : null}
 
           <KanaGrid
             rows={kanaRows}

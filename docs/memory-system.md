@@ -1,10 +1,10 @@
-# Kana Memory System Design
+# Japanese Learning Memory System Design
 
 ## 目标
 
 为 `kana` 设计一个适合初学者、可持续迭代、受 Anki / FSRS 启发但不过度复杂的记忆系统。
 
-这个方案的目标不是一开始就做成通用 SRS 平台，而是先为五十音学习建立一套足够清晰、足够有效、可以逐步升级的系统骨架。
+这个方案的目标不是一开始就做成通用 SRS 平台，而是先为五十音学习建立一套足够清晰、足够有效、可以逐步升级的系统骨架，同时保证它未来可以扩展到词汇、语法点、句型等其他学习项。
 
 ## 设计原则
 
@@ -100,7 +100,9 @@
 
 ## 内容粒度
 
-每个 `kana` 字符是一个最小学习项。
+当前阶段，每个 `kana` 字符是一个最小学习项。
+
+但从架构角度，记忆系统应该围绕“学习项”建模，而不是围绕“五十音专属卡片”建模。也就是说，后续接入词汇或语法点时，理想状态是复用同一套状态字段、调度引擎与存储抽象，只替换学习内容本身。
 
 每个学习项至少要支持：
 
@@ -115,11 +117,12 @@
 
 建议新增一个独立的 `memory state` 层，而不是把状态直接塞进静态数据表。
 
-### `KanaMemoryState`
+### `MemoryItemState`
 
 ```ts
-interface KanaMemoryState {
-  kanaId: string;
+interface MemoryItemState {
+  itemId: string;
+  itemType: "kana" | "vocabulary" | "grammar";
   introducedAt: string | null;
   dueAt: string | null;
   lastReviewedAt: string | null;
@@ -136,8 +139,8 @@ interface KanaMemoryState {
 
 ```ts
 interface MemoryRepository {
-  loadStates(): Promise<Record<string, KanaMemoryState>>;
-  saveStates(states: Record<string, KanaMemoryState>): Promise<void>;
+  loadStates(): Promise<Record<string, MemoryItemState>>;
+  saveStates(states: Record<string, MemoryItemState>): Promise<void>;
 }
 ```
 

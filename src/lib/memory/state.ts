@@ -1,9 +1,10 @@
 import { DEFAULT_DIFFICULTY, DEFAULT_STABILITY } from "./constants";
-import type { KanaMemoryState } from "./types";
+import type { KanaMemoryState, MemoryItemState, MemoryItemType } from "./types";
 
-export function createNewKanaMemoryState(kanaId: string): KanaMemoryState {
+export function createNewMemoryState(itemId: string, itemType: MemoryItemType = "kana"): MemoryItemState {
   return {
-    kanaId,
+    itemId,
+    itemType,
     introducedAt: null,
     dueAt: null,
     lastReviewedAt: null,
@@ -14,4 +15,8 @@ export function createNewKanaMemoryState(kanaId: string): KanaMemoryState {
     difficulty: DEFAULT_DIFFICULTY,
     status: "new",
   };
+}
+
+export function createNewKanaMemoryState(kanaId: string): KanaMemoryState {
+  return createNewMemoryState(kanaId, "kana");
 }
