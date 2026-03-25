@@ -264,16 +264,18 @@ export default function DetailPanel({
   const audioSummary = displayKana.audio
     ? audioSource === "local"
       ? "正在优先播放本地音频资源。"
-      : "当前字符已预留本地音频字段，必要时可回退到浏览器语音。"
-    : "当前没有本地音频，使用浏览器语音作为兜底入口。";
+      : "可以播放录音；如果录音暂时不可用，会改用浏览器朗读。"
+    : "暂时没有录音，可以先用浏览器朗读听一遍。";
 
   const audioErrorMessage =
     audioSource === "local"
-      ? "本地音频当前不可用，建议检查资源路径或继续使用浏览器语音兜底。"
-      : "当前浏览器不支持语音播放，可在后续接入本地音频资源。";
+      ? "录音暂时不可用，可以先用浏览器朗读。"
+      : "当前浏览器暂时无法朗读。";
 
   const audioStatusLabel =
     audioState === "playing" ? "播放中" : audioState === "error" ? "播放异常" : "待播放";
+  const audioSourceLabel =
+    audioSource === "local" ? "录音" : audioSource === "tts" ? "浏览器朗读" : null;
 
   return (
     <div
@@ -352,7 +354,7 @@ export default function DetailPanel({
               className="flex items-center justify-between border border-stone-300 bg-white px-4 py-3 text-left transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span>
-                <span className="block text-xs uppercase tracking-[0.28em] text-stone-400">Previous</span>
+                <span className="block text-xs uppercase tracking-[0.28em] text-stone-400">上一个</span>
                 <span className="mt-2 block text-sm text-stone-700">{previousKana ? previousKana.romaji : "已经是第一个"}</span>
               </span>
               <span lang="ja-JP" className="text-2xl text-stone-900">{previousKana ? getKanaChar(previousKana, activeType) : "—"}</span>
@@ -364,7 +366,7 @@ export default function DetailPanel({
               className="flex items-center justify-between border border-stone-300 bg-white px-4 py-3 text-left transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span>
-                <span className="block text-xs uppercase tracking-[0.28em] text-stone-400">Next</span>
+                <span className="block text-xs uppercase tracking-[0.28em] text-stone-400">下一个</span>
                 <span className="mt-2 block text-sm text-stone-700">{nextKana ? nextKana.romaji : "已经是最后一个"}</span>
               </span>
               <span lang="ja-JP" className="text-2xl text-stone-900">{nextKana ? getKanaChar(nextKana, activeType) : "—"}</span>
@@ -408,9 +410,9 @@ export default function DetailPanel({
               </button>
             </div>
             <div className="mt-4 flex flex-wrap gap-2 text-xs text-stone-500">
-              <span className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1">优先级：本地音频 → TTS</span>
+              <span className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1">播放方式：录音优先</span>
               <span className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1">状态：{audioStatusLabel}</span>
-              {audioSource ? <span className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1">来源：{audioSource}</span> : null}
+              {audioSource ? <span className="rounded-full border border-stone-300 bg-stone-50 px-3 py-1">来源：{audioSourceLabel}</span> : null}
             </div>
             {audioState === "error" ? <p className="mt-3 text-sm text-amber-700">{audioErrorMessage}</p> : null}
           </div>
@@ -429,7 +431,7 @@ export default function DetailPanel({
           <div className="border border-stone-300 bg-white p-4">
             <div className="text-xs uppercase tracking-[0.28em] text-stone-500">学习备注</div>
             <p className="mt-3 text-sm leading-7 text-stone-600">
-              {displayKana.notes ?? "这一项还没有额外备注，后续可以继续补充记忆提示与常见读音场景。"}
+              {displayKana.notes ?? "这一项暂时还没有补充说明。"}
             </p>
           </div>
         </div>

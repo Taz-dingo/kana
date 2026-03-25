@@ -26,10 +26,10 @@ export default function PracticeLauncher({
         <div className="border-b border-stone-300 px-5 py-5 sm:px-7 sm:py-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.32em] text-stone-500">Study Panel</p>
+              <p className="text-xs uppercase tracking-[0.32em] text-stone-500">今日学习</p>
               <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-stone-900">今天先学什么</h2>
               <p className="mt-2 text-sm leading-7 text-stone-500">
-                先处理到期复习，再补少量新字符；如果最近有反复错误的字符，也可以单独做一轮弱项强化。
+                先把今天该回看的内容过一遍，再补少量新字符；如果最近总有几项不稳，也可以单独再练一轮。
               </p>
             </div>
             <button
@@ -49,12 +49,12 @@ export default function PracticeLauncher({
             disabled={dueCount === 0}
             className="border border-stone-300 bg-white p-5 text-left transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <div className="text-xs uppercase tracking-[0.28em] text-stone-500">Review</div>
+            <div className="text-xs uppercase tracking-[0.28em] text-stone-500">今日复习</div>
             <div className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-stone-900">{dueCount}</div>
             <div className="mt-3 text-sm leading-7 text-stone-600">
-              优先练习今天到期的字符，让系统先处理最可能遗忘的内容。
+              先把今天该复习的字符过一遍，保持记忆不断线。
             </div>
-            <div className="mt-5 text-sm text-stone-500">模式：复习优先</div>
+            <div className="mt-5 text-sm text-stone-500">适合先开始</div>
           </button>
 
           <button
@@ -63,12 +63,12 @@ export default function PracticeLauncher({
             disabled={newCount === 0}
             className="border border-stone-300 bg-white p-5 text-left transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <div className="text-xs uppercase tracking-[0.28em] text-stone-500">Learn</div>
+            <div className="text-xs uppercase tracking-[0.28em] text-stone-500">新字符</div>
             <div className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-stone-900">{newCount}</div>
             <div className="mt-3 text-sm leading-7 text-stone-600">
-              从未正式进入记忆系统的字符会先从这里开始，数量保持轻量，避免复习债过快膨胀。
+              从还没正式练过的字符开始，每次少量推进，更容易记稳。
             </div>
-            <div className="mt-5 text-sm text-stone-500">模式：新学训练</div>
+            <div className="mt-5 text-sm text-stone-500">适合慢慢加新内容</div>
           </button>
 
           <button
@@ -77,12 +77,12 @@ export default function PracticeLauncher({
             disabled={weakCount === 0}
             className="border border-stone-300 bg-white p-5 text-left transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <div className="text-xs uppercase tracking-[0.28em] text-stone-500">Weak Spots</div>
+            <div className="text-xs uppercase tracking-[0.28em] text-stone-500">重点回看</div>
             <div className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-stone-900">{weakCount}</div>
             <div className="mt-3 text-sm leading-7 text-stone-600">
-              最近答错较多或稳定度较低的字符会集中出现在这里，适合做一轮强化记忆。
+              把最近容易出错的字符单独拎出来，再补一轮。
             </div>
-            <div className="mt-5 text-sm text-stone-500">模式：弱项强化</div>
+            <div className="mt-5 text-sm text-stone-500">适合集中补弱项</div>
           </button>
         </div>
       </div>
